@@ -1,0 +1,10 @@
+source_id	source_label	source_category	input_mode	match_rule	raw_dir	adapter_name	dependency_name	dependency_type	fallback_hint
+local_pdf	PDF / 本地 PDF	core_builtin	file	file_ext:.pdf	raw/pdfs	-	-	none	直接提供文件路径即可进入主线
+local_document	Markdown/文本/HTML	core_builtin	file	file_ext:.md,.txt,.html	raw/notes	-	-	none	直接提供文件路径即可进入主线
+plain_text	纯文本粘贴	core_builtin	text	text:inline	raw/notes	-	-	none	直接粘贴正文即可进入主线
+x_twitter	X/Twitter	manual_only	url	url_host:x.com,twitter.com	raw/tweets	-	-	none	请先复制正文，再粘贴进来
+wechat_article	微信公众号	manual_only	url	url_host:mp.weixin.qq.com	raw/wechat	-	-	none	请先在浏览器打开文章并复制正文，再粘贴进来
+youtube_video	YouTube	manual_only	url	url_host:youtube.com,youtu.be	raw/articles	-	-	none	请先提供字幕文本或整理后的笔记，再粘贴进来
+zhihu_article	知乎	manual_only	url	url_host:zhihu.com	raw/zhihu	-	-	none	请先复制正文，再粘贴进来
+xiaohongshu_post	小红书	manual_only	url	url_host:xiaohongshu.com,xhslink.com	raw/xiaohongshu	-	-	none	请先从 App 或网页复制内容，再粘贴进来
+web_article	网页文章	manual_only	url	url_host:*	raw/articles	-	-	none	请先复制全文，或保存为本地文件后继续
