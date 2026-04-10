@@ -48,10 +48,12 @@ test_install_dry_run_for_claude_repo_level() {
         printf '\n' | bash "$REPO_ROOT/install.sh" --platform claude --dry-run 2>&1
     )" || fail "install.sh dry-run for Claude should succeed"
 
-    assert_text_contains "$output" "平台：claude"
-    assert_text_contains "$output" "目标 repo 目录：$REPO_ROOT"
+    assert_text_contains "$output" "Platform: claude"
+    assert_text_contains "$output" "Target repo: $REPO_ROOT"
     assert_text_contains "$output" "$REPO_ROOT/.claude/skills/llm-wiki-mini"
-    assert_text_contains "$output" "请输入目标 repo 目录"
+    assert_text_contains "$output" "Target repo directory"
+    assert_text_contains "$output" "Included:"
+    assert_text_contains "$output" "Log file:"
 }
 
 test_install_for_codex_copies_bundle_to_repo_level() {

@@ -17,20 +17,20 @@ COMMON_ITEMS=(
   "templates"
 )
 
-info()  { printf '\033[36m[信息]\033[0m %s\n' "$1"; }
-ok()    { printf '\033[32m[完成]\033[0m %s\n' "$1"; }
-warn()  { printf '\033[33m[警告]\033[0m %s\n' "$1"; }
-err()   { printf '\033[31m[错误]\033[0m %s\n' "$1" >&2; }
+info()  { printf '\033[36m[INFO]\033[0m %s\n' "$1"; }
+ok()    { printf '\033[32m[OK]\033[0m %s\n' "$1"; }
+warn()  { printf '\033[33m[WARN]\033[0m %s\n' "$1"; }
+err()   { printf '\033[31m[ERROR]\033[0m %s\n' "$1" >&2; }
 
 usage() {
   cat <<'EOF'
-用法：
+Usage:
   bash install.sh --platform <claude|codex> [--dry-run] [--target-dir <dir>]
 
-说明：
-  这是 repo 级安装器，会把 skill 安装到目标 repo 下的平台标准目录。
-  --target-dir 指向目标 repo 目录。
-  未传参数时，会先交互式询问 platform 和目标 repo 目录。
+Notes:
+  This installer writes the skill into the platform-standard location inside a target repo.
+  --target-dir points to the target repo directory.
+  If omitted, the script asks for platform and target repo interactively.
 EOF
 }
 
@@ -72,7 +72,7 @@ copy_item() {
 prompt_platform() {
   local answer=""
 
-  printf '请选择平台 [claude/codex]: ' >&2
+  printf 'Select platform [claude/codex]: ' >&2
   IFS= read -r answer || true
 
   case "$answer" in
@@ -80,7 +80,7 @@ prompt_platform() {
       printf '%s\n' "$answer"
       ;;
     *)
-      err "平台必须是 claude 或 codex"
+      err "Platform must be claude or codex."
       exit 1
       ;;
   esac
@@ -90,7 +90,7 @@ prompt_target_repo_dir() {
   local default_target_repo_dir="$1"
   local answer=""
 
-  printf '请输入目标 repo 目录 [%s]: ' "$default_target_repo_dir" >&2
+  printf 'Target repo directory [%s]: ' "$default_target_repo_dir" >&2
   IFS= read -r answer || true
 
   if [ -n "$answer" ]; then
@@ -112,7 +112,7 @@ resolve_skill_root() {
       printf '%s\n' "$repo_dir/.codex/skills"
       ;;
     *)
-      err "不支持的平台：$platform"
+      err "Unsupported platform: $platform"
       exit 1
       ;;
   esac
@@ -132,7 +132,7 @@ install_common_bundle() {
     target_path="$target_dir/$item"
 
     if [ ! -e "$source_path" ]; then
-      warn "$item：安装源文件缺失，跳过"
+      warn "Missing install source: $item"
       continue
     fi
 
@@ -151,7 +151,7 @@ install_platform_skill_entry() {
   local target_path="$target_dir/SKILL.md"
 
   if [ ! -f "$source_path" ]; then
-    err "缺少平台 skill 入口：$source_path"
+    err "Missing platform SKILL entry: $source_path"
     exit 1
   fi
 
@@ -170,7 +170,7 @@ install_platform_extras() {
       copy_item "$SCRIPT_DIR/agents" "$target_dir/agents"
       ;;
     *)
-      err "不支持的平台：$platform"
+      err "Unsupported platform: $platform"
       exit 1
       ;;
   esac
@@ -182,7 +182,7 @@ install_references() {
   local target_path="$target_dir/references/skill-core.md"
 
   if [ ! -f "$source_path" ]; then
-    err "缺少共享 skill 内容：$source_path"
+    err "Missing shared skill content: $source_path"
     exit 1
   fi
 
@@ -231,7 +231,7 @@ Start here:
 EOF
       ;;
     *)
-      err "不支持的平台：$platform"
+      err "Unsupported platform: $platform"
       exit 1
       ;;
   esac
@@ -260,65 +260,24 @@ remove_legacy_artifacts() {
   done
 }
 
-join_source_labels() {
-  local category="$1"
+print_install_summary() {
+  local platform="$1"
 
-  bash "$SOURCE_REGISTRY_SCRIPT" list-by-category "$category" \
-    | awk -F '\t' '
-      BEGIN { separator = "" }
-      NF {
-        printf "%s%s", separator, $2
-        separator = "、"
-      }
-      END {
-        if (separator == "") {
-          printf "-"
-        }
-        printf "\n"
-      }
-    '
-}
-
-print_source_boundary() {
-  local core_sources manual_sources
-
-  core_sources="$(join_source_labels core_builtin)"
-  manual_sources="$(join_source_labels manual_only)"
-
-  echo ""
-  echo "================================"
-  echo "  来源边界"
-  echo "================================"
-  echo ""
-  echo "离线主线：$core_sources"
-  echo "手动入口：$manual_sources"
-}
-
-print_environment() {
-  echo ""
-  echo "================================"
-  echo "  环境说明"
-  echo "================================"
-  echo ""
-  echo "这个 mini skill 不会安装任何第三方联网提取器。"
-  echo "支持的主线输入：本地 PDF、本地 Markdown/文本/HTML、纯文本粘贴。"
-  echo "URL 输入统一改为手动入口：请复制正文，或先保存为本地文件再 ingest。"
-}
-
-print_adapter_states() {
-  echo ""
-  echo "================================"
-  echo "  来源状态"
-  echo "================================"
-  echo ""
-
-  bash "$ADAPTER_STATE_SCRIPT" summary-human
+  echo "Included:"
+  echo "  - SKILL.md"
+  echo "  - scripts/"
+  echo "  - templates/"
+  echo "  - references/skill-core.md"
+  if [ "$platform" = "codex" ]; then
+    echo "  - agents/openai.yaml"
+  fi
+  echo "Mode: offline-first"
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --platform)
-      [ $# -ge 2 ] || { err "--platform 需要一个值"; usage; exit 1; }
+      [ $# -ge 2 ] || { err "--platform requires a value."; usage; exit 1; }
       PLATFORM="$2"
       shift 2
       ;;
@@ -327,7 +286,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --target-dir)
-      [ $# -ge 2 ] || { err "--target-dir 需要一个值"; usage; exit 1; }
+      [ $# -ge 2 ] || { err "--target-dir requires a value."; usage; exit 1; }
       TARGET_DIR="$2"
       shift 2
       ;;
@@ -336,7 +295,7 @@ while [ $# -gt 0 ]; do
       exit 0
       ;;
     *)
-      err "未知参数：$1"
+      err "Unknown argument: $1"
       usage
       exit 1
       ;;
@@ -359,16 +318,10 @@ SKILL_ROOT="$(resolve_skill_root "$TARGET_REPO_DIR" "$PLATFORM")"
 TARGET_SKILL_DIR="$(resolve_skill_dir "$SKILL_ROOT")"
 SKILL_ROOT="$(dirname "$TARGET_SKILL_DIR")"
 
-echo ""
-echo "================================"
-echo "  llm-wiki-mini 安装"
-echo "================================"
-echo ""
-echo "平台：$PLATFORM"
-echo "仓库目录：$SCRIPT_DIR"
-echo "目标 repo 目录：$TARGET_REPO_DIR"
-echo "技能根目录：$SKILL_ROOT"
-echo "目标目录：$TARGET_SKILL_DIR"
+info "Installing llm-wiki-mini"
+echo "Platform: $PLATFORM"
+echo "Target repo: $TARGET_REPO_DIR"
+echo "Skill dir: $TARGET_SKILL_DIR"
 
 run_cmd mkdir -p "$TARGET_REPO_DIR"
 run_cmd mkdir -p "$SKILL_ROOT"
@@ -380,10 +333,6 @@ install_platform_skill_entry "$PLATFORM" "$TARGET_SKILL_DIR"
 install_platform_extras "$PLATFORM" "$TARGET_SKILL_DIR"
 write_repo_entry "$PLATFORM" "$TARGET_REPO_DIR"
 
-print_source_boundary
-print_environment
-print_adapter_states
-
-echo ""
-echo "日志文件：$LOG_FILE"
-ok "llm-wiki-mini 已准备完成"
+print_install_summary "$PLATFORM"
+echo "Log file: $LOG_FILE"
+ok "Install completed."
