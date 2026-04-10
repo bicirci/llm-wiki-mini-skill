@@ -45,31 +45,47 @@ test_install_dry_run_for_claude_repo_level() {
     local output
 
     output="$(
-        bash "$REPO_ROOT/install.sh" --platform claude --dry-run 2>&1
+        printf '\n' | bash "$REPO_ROOT/install.sh" --platform claude --dry-run 2>&1
     )" || fail "install.sh dry-run for Claude should succeed"
 
-    assert_text_contains "$output" "平台：claude"
+    assert_text_contains "$output" "Platform: claude"
+    assert_text_contains "$output" "Target repo: $REPO_ROOT"
     assert_text_contains "$output" "$REPO_ROOT/.claude/skills/llm-wiki-mini"
+    assert_text_contains "$output" "Target repo directory"
+    assert_text_contains "$output" "Included:"
+    assert_text_contains "$output" "Log file:"
 }
 
 test_install_for_codex_copies_bundle_to_repo_level() {
     rm -rf "$REPO_ROOT/.codex"
+    rm -f "$REPO_ROOT/AGENTS.md"
 
-    bash "$REPO_ROOT/install.sh" --platform codex > /dev/null 2>&1 \
+    printf '\n' | bash "$REPO_ROOT/install.sh" --platform codex > /dev/null 2>&1 \
         || fail "install.sh should install for Codex"
 
     assert_path_exists "$REPO_ROOT/.codex/skills/llm-wiki-mini/SKILL.md"
     assert_path_exists "$REPO_ROOT/.codex/skills/llm-wiki-mini/scripts/source-registry.sh"
     assert_path_exists "$REPO_ROOT/.codex/skills/llm-wiki-mini/scripts/adapter-state.sh"
+    assert_path_exists "$REPO_ROOT/.codex/skills/llm-wiki-mini/references/skill-core.md"
+    assert_path_exists "$REPO_ROOT/.codex/skills/llm-wiki-mini/agents/openai.yaml"
+    assert_file_contains "$REPO_ROOT/.codex/skills/llm-wiki-mini/SKILL.md" "persistent markdown wiki"
+    assert_file_contains "$REPO_ROOT/.codex/skills/llm-wiki-mini/SKILL.md" "references/skill-core.md"
+    assert_path_exists "$REPO_ROOT/AGENTS.md"
+    assert_file_contains "$REPO_ROOT/AGENTS.md" ".codex/skills/llm-wiki-mini/SKILL.md"
 }
 
 test_setup_installs_to_repo_level_claude() {
     rm -rf "$REPO_ROOT/.claude"
+    rm -f "$REPO_ROOT/CLAUDE.md"
 
-    bash "$REPO_ROOT/setup.sh" > /dev/null 2>&1 \
+    printf '\n' | bash "$REPO_ROOT/setup.sh" > /dev/null 2>&1 \
         || fail "setup.sh should install for Claude"
 
     assert_path_exists "$REPO_ROOT/.claude/skills/llm-wiki-mini/SKILL.md"
+    assert_path_exists "$REPO_ROOT/.claude/skills/llm-wiki-mini/references/skill-core.md"
+    assert_file_contains "$REPO_ROOT/.claude/skills/llm-wiki-mini/SKILL.md" "persistent markdown wiki"
+    assert_path_exists "$REPO_ROOT/CLAUDE.md"
+    assert_file_contains "$REPO_ROOT/CLAUDE.md" ".claude/skills/llm-wiki-mini/SKILL.md"
 }
 
 test_init_fills_language_placeholder() {
@@ -87,11 +103,17 @@ test_init_fills_language_placeholder() {
 test_docs_are_repo_level_and_offline_only() {
     assert_file_contains "$REPO_ROOT/README.md" ".claude/skills/llm-wiki-mini"
     assert_file_contains "$REPO_ROOT/README.md" ".codex/skills/llm-wiki-mini"
-    assert_file_not_contains "$REPO_ROOT/README.md" "~/.claude/skills"
-    assert_file_not_contains "$REPO_ROOT/README.md" "~/.codex/skills"
+    assert_file_contains "$REPO_ROOT/README.md" "persistent wiki"
+    assert_file_contains "$REPO_ROOT/README.md" "references/skill-core.md"
+    assert_file_contains "$REPO_ROOT/README.md" "target directory"
+    assert_file_not_contains "$REPO_ROOT/README.md" "~/.claude"
+    assert_file_not_contains "$REPO_ROOT/README.md" "~/.codex"
+    assert_file_not_contains "$REPO_ROOT/CLAUDE.md" "~/.claude"
+    assert_file_not_contains "$REPO_ROOT/AGENTS.md" "~/.codex"
     assert_file_not_contains "$REPO_ROOT/README.md" "wechat-article-to-markdown"
     assert_file_not_contains "$REPO_ROOT/README.md" "youtube-transcript"
     assert_file_not_contains "$REPO_ROOT/README.md" "baoyu-url-to-markdown"
+    assert_file_not_contains "$REPO_ROOT/README.md" "file://"
 }
 
 test_source_registry_is_offline_plus_manual() {
@@ -120,8 +142,16 @@ test_source_registry_is_offline_plus_manual() {
 }
 
 test_skill_mentions_manual_url_handling() {
-    assert_file_contains "$REPO_ROOT/SKILL.md" "mini 版对 URL 一律不自动提取"
-    assert_file_contains "$REPO_ROOT/SKILL.md" "scripts/adapter-state.sh"
+    assert_file_contains "$REPO_ROOT/SKILL.md" "platforms/claude/SKILL.md"
+    assert_file_contains "$REPO_ROOT/SKILL.md" "references/skill-core.md"
+    assert_file_contains "$REPO_ROOT/platforms/claude/SKILL.md" "references/skill-core.md"
+    assert_file_contains "$REPO_ROOT/platforms/codex/SKILL.md" "references/skill-core.md"
+    assert_file_contains "$REPO_ROOT/references/skill-core.md" 'Treat `index.md` and `log.md` as first-class files'
+}
+
+test_codex_metadata_exists() {
+    assert_path_exists "$REPO_ROOT/agents/openai.yaml"
+    assert_file_contains "$REPO_ROOT/agents/openai.yaml" "display_name: llm-wiki-mini"
 }
 
 test_install_dry_run_for_claude_repo_level
@@ -131,6 +161,7 @@ test_init_fills_language_placeholder
 test_docs_are_repo_level_and_offline_only
 test_source_registry_is_offline_plus_manual
 test_skill_mentions_manual_url_handling
+test_codex_metadata_exists
 
 bash "$REPO_ROOT/tests/adapter-state.sh" || fail "adapter-state.sh 测试失败"
 

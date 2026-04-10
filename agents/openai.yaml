@@ -1,0 +1,7 @@
+interface:
+  display_name: llm-wiki-mini
+  short_description: Repo-level offline persistent wiki maintainer for Codex.
+  default_prompt: Build and maintain a persistent markdown wiki from local files and pasted text.
+
+policy:
+  allow_implicit_invocation: true
