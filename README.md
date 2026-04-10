@@ -1,24 +1,64 @@
 # llm-wiki-mini
 
-> 面向 Claude Code 和 Codex 的仓库级知识库 skill。只保留离线主线，不安装任何第三方联网提取插件。
+> A repo-level, offline-first implementation of the `llm-wiki` pattern for Claude Code and Codex.
 
-## 它做什么
+## What This Is
 
-把本地文件和手动整理出的文本编译成持续维护的 wiki。知识只整理一次，之后在本地 markdown 里持续演化。
+`llm-wiki-mini` is not a file summarizer and not a query-time RAG wrapper. Its job is to help an agent incrementally build and maintain a persistent wiki that sits between you and your raw sources.
 
-## 支持范围
+The core idea comes from [Andrej Karpathy's llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and is adapted here as an offline-first repo-level workflow.
 
-- 离线主线：本地 PDF、本地 Markdown/文本/HTML、纯文本粘贴
-- 手动入口：网页文章、X/Twitter、微信公众号、YouTube、知乎、小红书
+- Raw sources are the immutable source of truth.
+- The wiki is the maintained knowledge layer.
+- The skill instructions are the operating contract that make the agent behave like a disciplined wiki maintainer.
 
-手动入口统一处理为：
+The point is accumulation. When you add a source, the agent should not only summarize it. It should integrate it into the existing wiki, update related pages, strengthen or challenge the current synthesis, and keep the whole knowledge base coherent over time.
 
-- 用户复制正文后直接粘贴
-- 或先保存为本地文件，再走主线 ingest
+## The Three Layers
 
-## 仓库级安装
+### 1. Raw Sources
 
-安装不会写入 `~/.claude` 或 `~/.codex`，而是写到当前仓库内。
+`raw/` stores curated source material. These files are immutable. The agent reads them but does not modify them.
+
+### 2. The Wiki
+
+`wiki/` stores generated knowledge pages: source summaries, entity pages, topic pages, comparisons, and synthesis pages. This is the maintained layer. The agent owns the bookkeeping here.
+
+### 3. The Schema / Skill Contract
+
+The skill instructions define how ingest, query, lint, digest, and graph workflows should behave. In `llm-wiki-mini`, the shared contract lives in `shared/skill-core.md`, and the platform-specific `SKILL.md` files are thin entry points.
+
+## What Mini Changes
+
+Mini only narrows the way sources enter the system. It does not change the core `llm-wiki` philosophy.
+
+What mini keeps:
+
+- Persistent wiki maintenance
+- Incremental ingest into existing knowledge
+- `index.md` and `log.md` as first-class files
+- Query results that can be filed back into the wiki
+- Linting for contradictions, gaps, and stale pages
+
+What mini removes:
+
+- Automatic web extraction
+- Third-party fetch/extract plugins
+- Extra install-time network dependencies
+
+## Input Boundary
+
+- Offline mainline: local PDF, local Markdown/text/HTML, pasted text
+- Manual-only inputs: web articles, X/Twitter, WeChat articles, YouTube, Zhihu, Xiaohongshu
+
+Manual-only means:
+
+- copy the text into the chat, or
+- save it locally first, then ingest it as a file
+
+## Repo-Level Install
+
+The installer does not write to a global skill location under the user's home directory. It installs into a target directory that you choose.
 
 ```bash
 # Claude Code
@@ -28,57 +68,47 @@ bash install.sh --platform claude
 bash install.sh --platform codex
 ```
 
-默认安装位置：
+The installer asks for the target repo directory first. Press Enter to install into the current repository.
+
+Inside the chosen repo, the install paths are:
 
 - Claude Code: `.claude/skills/llm-wiki-mini`
 - Codex: `.codex/skills/llm-wiki-mini`
 
-旧的 Claude 兼容入口仍保留：
+Legacy Claude compatibility entry:
 
 ```bash
 bash setup.sh
 ```
 
-## 入口文件
+## File Roles
 
-- [CLAUDE.md](CLAUDE.md)：Claude Code 入口
-- [AGENTS.md](AGENTS.md)：Codex 入口
-- [SKILL.md](SKILL.md)：核心能力和工作流
+- [CLAUDE.md](CLAUDE.md): repo entry for Claude Code
+- [AGENTS.md](AGENTS.md): repo entry for Codex
+- [references/skill-core.md](references/skill-core.md): shared workflow contract
+- [platforms/claude/SKILL.md](platforms/claude/SKILL.md): thin Claude skill entry
+- [platforms/codex/SKILL.md](platforms/codex/SKILL.md): thin Codex skill entry
 
-## 目录结构
+## Why This Works
 
-```text
-你的知识库/
-├── raw/
-│   ├── articles/
-│   ├── tweets/
-│   ├── wechat/
-│   ├── xiaohongshu/
-│   ├── zhihu/
-│   ├── pdfs/
-│   ├── notes/
-│   └── assets/
-├── wiki/
-│   ├── entities/
-│   ├── topics/
-│   ├── sources/
-│   ├── comparisons/
-│   └── synthesis/
-├── index.md
-├── log.md
-└── .wiki-schema.md
-```
+The expensive part of a knowledge base is not reading. It is maintenance: cross-links, consistency, page updates, synthesis revisions, contradiction tracking, and keeping `index.md` and `log.md` usable as the wiki grows.
+
+Humans usually stop maintaining wikis because the bookkeeping burden compounds. LLMs are good at exactly that bookkeeping. The human curates sources and asks good questions. The agent maintains the wiki.
 
 ## FAQ
 
-### 为什么没有自动抓网页、公众号或 YouTube？
+### Why is this not just a note template?
 
-这是刻意收缩后的 mini 版。仓库里不再安装任何第三方提取器，也不再依赖浏览器调试端口或额外下载步骤。
+Because the goal is not to store disconnected notes. The goal is to maintain a growing, structured, interlinked wiki that already contains the accumulated synthesis when you ask the next question.
 
-### URL 还可以怎么处理？
+### Why should query results sometimes be written back into the wiki?
 
-把正文复制出来直接粘贴，或者先保存成 `.md`、`.txt`、`.html`、`.pdf` 再交给 skill。
+Because a useful comparison, synthesis, or structured answer is part of the knowledge base. If it only lives in chat history, the system loses compounding value.
 
-### 适合什么场景？
+### Why are `index.md` and `log.md` important?
 
-适合要求稳定、可离线、可审计的个人知识库工作流，不适合依赖网页自动抓取的场景。
+`index.md` is the content map. `log.md` is the evolution timeline. Together they let the agent navigate the wiki without needing retrieval infrastructure.
+
+### Why no automatic web extraction?
+
+Mini is intentionally offline-first. It reduces operational complexity, removes third-party fetch dependencies, and keeps the source boundary explicit.
